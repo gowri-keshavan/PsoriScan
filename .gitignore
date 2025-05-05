@@ -1,1 +1,32 @@
+# Ignore virtual environments
+venv/
+ENV/
+env/
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Model and binary files
+*.h5
+*.pyd
+*.dll
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Mac system files
+.DS_Store
+
+# VS Code settings
+.vscode/
+
+# Log files
+*.log
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
 venv/
