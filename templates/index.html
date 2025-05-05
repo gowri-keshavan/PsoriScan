@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Psoriasis Detection Tool</title>
+</head>
+<body>
+    <h1>Upload a Skin Image</h1>
+    <form action="/predict" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">Detect Psoriasis</button>
+    </form>
+
+    {% if label %}
+        <h2>Prediction: {{ label }}</h2>
+        <h3>Confidence: {{ confidence }}</h3>
+        <img src="{{ image_path }}" width="300">
+    {% endif %}
+</body>
+</html>
