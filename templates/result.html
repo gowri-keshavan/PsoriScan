@@ -1,14 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detection Result</title>
 </head>
 <body>
-    <h2>Result: {{ label }}</h2>
-    <p>Confidence: {{ confidence }}</p>
-    <h3>Original Image</h3>
-    <img src="{{ url_for('static', filename='uploads/' + original_img.split('/')[-1]) }}" width="300">
-    <h3>Highlighted Image</h3>
-    <img src="{{ url_for('static', filename='outputs/' + output_img.split('/')[-1]) }}" width="300">
+    <h1>Psoriasis Detection Result</h1>
+    <h2>Prediction: {{ label }}</h2>
+    <p>Confidence: {{ confidence }}%</p>
+
+    <br><br>
+    <a href="/">Go Back</a>
 </body>
 </html>
