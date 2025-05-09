@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Psoriasis Detection Result</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 40px;
+            background-color: #f8f8f8;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .image-container {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 30px;
+        }
+        .image-box {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        img {
+            width: 300px;
+            border-radius: 8px;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 20px;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <h1>Psoriasis Detection Result</h1>
+    <img src="{{ original_img }}" />
+    <img src="{{ output_img }}" />
+
+    <h2>Prediction: {{ label }}</h2>
+    <p>Confidence: {{ confidence }}%</p>
+
+    <div class="result">
+        <p><strong>Prediction:</strong> {{ label }}</p>
+        <p><strong>Confidence:</strong> {{ confidence }}%</p> <!-- This will display the confidence percentage -->
+    </div>
+
+    <div class="image-container">
+        <div class="image-box">
+            <h2>Original Image</h2>
+            <img src="{{ url_for('static', filename='uploads/' + original_img) }}" alt="Original Image">
+        </div>
+        <div class="image-box">
+            <h2>Highlighted Image</h2>
+            <img src="{{ url_for('static', filename='outputs/' + output_img) }}" alt="Processed Image">
+        </div>
+    </div>
+
+</body>
+</html>
