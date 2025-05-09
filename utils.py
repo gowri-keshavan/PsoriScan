@@ -4,7 +4,9 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 
 # Load the trained model
-model = load_model(r"C:/Users/Niharika PM/OneDrive/Desktop/cv project/Psoriasis-Detection/psoriasis_model.h5")
+#model = load_model(r"C:/Users/Niharika PM/OneDrive/Desktop/cv project/Psoriasis-Detection/psoriasis_model.h5")
+
+model=load_model("psoriasis_model.h5")
 
 def preprocess_image(img_path):
     # Load and preprocess the image
