@@ -1,9 +1,7 @@
-flask
-tensorflow
-numpy
-opencv-python
-Pillow
-matplotlib 
-scikit-learn  
-spicy
-flask_cors
+# Runtime dependencies for the API (no ML framework: pick one of the two files below)
+flask>=3.0,<4
+flask-cors>=4.0,<7
+gunicorn>=22.0
+numpy>=1.26,<3
+opencv-python-headless>=4.9,<5
+Pillow>=10.3,<13

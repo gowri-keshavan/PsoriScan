@@ -1,0 +1,27 @@
+{
+  "images_found": 2002,
+  "images_kept": 1679,
+  "positive_keyword": "psoria",
+  "group_regex": "^(\\d+)[.,]\\d+$",
+  "excluded_by_positive_keyword": 276,
+  "unreadable_skipped": 7,
+  "exact_duplicates_removed": 40,
+  "near_duplicate_clusters_with_conflicting_labels_dropped": 0,
+  "near_duplicate_threshold_bits_of_256": 6,
+  "split_counts": {
+    "train": {
+      "no_psoriasis": 687,
+      "psoriasis": 488
+    },
+    "val": {
+      "no_psoriasis": 147,
+      "psoriasis": 105
+    },
+    "test": {
+      "no_psoriasis": 147,
+      "psoriasis": 105
+    }
+  },
+  "seed": 42,
+  "leakage_check": "passed"
+}

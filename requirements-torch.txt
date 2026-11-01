@@ -1,0 +1,4 @@
+# PyTorch backend (ResNet18 transfer learning). For a smaller CPU-only install use:
+#   pip install --index-url https://download.pytorch.org/whl/cpu -r requirements-torch.txt
+torch>=2.2
+torchvision>=0.17

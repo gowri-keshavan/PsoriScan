@@ -1,32 +1,35 @@
-# Ignore virtual environments
-venv/
-ENV/
-env/
-
-# Byte-compiled / cache files
+# Python
 __pycache__/
 *.py[cod]
-*.pyo
-
-# Model and binary files
-*.h5
-*.pyd
-*.dll
-*.so
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
-
-# Mac system files
-.DS_Store
-
-# VS Code settings
-.vscode/
-
-# Log files
-*.log
-
-# OS generated files
-Thumbs.db
-ehthumbs.db
 venv/
+.venv/
+env/
+.pytest_cache/
+
+# Data and model weights: too large / not ours to redistribute. See README for where they live.
+dataset/
+data/
+models/
+*.h5
+*.keras
+*.pt
+*.pth
+
+# Generated on every run; keep reports/ so results stay in the repo
+reports/dataset_summary.json.bak
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.env.local
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+.env
+
+external/

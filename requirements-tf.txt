@@ -1,0 +1,2 @@
+# TensorFlow backend (custom CNN). Use `tensorflow` instead for GPU training.
+tensorflow-cpu>=2.16

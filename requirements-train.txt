@@ -1,0 +1,3 @@
+# Needed only by prepare_dataset.py / train_*.py / evaluate.py
+scikit-learn>=1.4,<2
+matplotlib>=3.8,<4
