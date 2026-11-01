@@ -1,144 +1,162 @@
 # PsoriScan
 
-Psoriasis screening from skin photos. Two deep learning models (a custom CNN in **TensorFlow/Keras** and a
-transfer-learning **ResNet18 in PyTorch**) are trained on the same leakage-free data splits, compared on a
-held-out test set, and the better one is served through a **Flask** API to a **React** web app that also shows
-a Grad-CAM heatmap of the regions that drove each prediction.
+An end-to-end machine learning system that estimates, from a photograph of skin, how likely the image is to show
+psoriasis. It covers data preparation, model training and comparison across two deep learning frameworks,
+rigorous evaluation, and a web application that returns a prediction with a visual explanation.
 
-> **Not a medical device.** PsoriScan is a machine learning project. It cannot diagnose psoriasis or any
-> other condition. See a dermatologist for any skin concern.
 
-Live demo: _add your deployed frontend URL here_
 
-## How it works
+<!-- Live demo: add the deployed frontend URL here once it exists -->
 
-```
-dataset/ ──prepare_dataset.py──> data/{train,val,test}/  ──train_tf.py────> models/psoriasis_cnn.keras
- (raw)     dedupe, group near-       (stratified, no leakage)  train_torch.py─> models/psoriasis_resnet18.pt
-           duplicates, split                                         │
-                                                      evaluate.py ◄──┘  (held-out test split, metrics + plots)
-                                                                │
-React app ──POST /predict──> Flask API ──> predictor (TF or PyTorch) ──> label, probability, Grad-CAM heatmap
-```
+## Highlights
 
-| Step | Script | What it does |
-|---|---|---|
-| Data preparation | `prepare_dataset.py` | Drops unreadable/tiny files and exact duplicates, groups near-duplicate photos (256-bit perceptual hash), then splits whole groups 70/15/15 stratified by class, so a photo and its near-copy can never land in different splits. Writes `data/manifest.csv` and `reports/dataset_summary.json`. |
-| Training (TensorFlow) | `train_tf.py` | Small CNN (3 conv blocks, global average pooling), augmentation inside the model, early stopping on validation loss. |
-| Training (PyTorch) | `train_torch.py` | ImageNet-pretrained ResNet18: head-only phase, then full fine-tuning. |
-| Evaluation | `evaluate.py` | Accuracy, precision, recall, specificity, F1, ROC-AUC with bootstrap 95% CIs, confusion matrix, ROC curve and per-image predictions for each model, on the **test** split only. |
-| Serving | `app.py`, `psoriscan/` | `POST /predict` returns the label, psoriasis probability, confidence and a transparent heatmap PNG. Images are processed in memory and never written to disk. |
+- **Full pipeline:** dataset curation, training, evaluation, REST API and React interface, all reproducible
+  from the command line.
+- **Two frameworks, one comparison:** a custom CNN in TensorFlow/Keras and a transfer-learning ResNet18 in
+  PyTorch, trained on identical data splits and evaluated with the same code.
+- **Rigorous evaluation:** held-out test set, bootstrap 95% confidence intervals, confusion matrices, ROC
+  curves, and a leakage check that stops the split if any duplicate or group crosses a boundary.
+- **Dataset confound identified and quantified:** a baseline that sees only file properties (no pixels)
+  reaches 95.6% test accuracy, which shows that high scores on this dataset must be interpreted with caution.
+- **Explainability:** Grad-CAM heatmaps, implemented for both frameworks and displayed in the interface.
+- **Engineering practice:** privacy-preserving inference (uploads are processed in memory and never stored),
+  input validation, automated tests, continuous integration, and a Dockerfile.
 
-Training, evaluation and the API share one preprocessing path (`psoriscan/imaging.py`) and one predictor
-class per framework (`psoriscan/predictors.py`), so evaluation numbers describe exactly what the API serves.
+## Technology
 
-### Dataset
-
-Source: _add the dataset name, link and licence here_ (the raw images are not included in this repo).
-
-`prepare_dataset.py` on the original folders (2,002 images): 7 images dropped as too small (under 32 px on a
-side), 48 exact duplicates removed, leaving 1,947 images split into 1,363 train / 292 validation / 292 test
-(balanced between classes). In the original train/validation folders, 2 groups of identical images appeared in
-both; the new split removes that leakage. Limitation: patient identity is unknown, so photos of the same person
-could still appear in different splits.
+| Area | Tools |
+|---|---|
+| Machine learning | TensorFlow/Keras, PyTorch, torchvision, scikit-learn, OpenCV, NumPy, Pillow |
+| Backend | Python, Flask, Gunicorn |
+| Frontend | React, JavaScript (Create React App) |
+| Quality and delivery | pytest, Jest and Testing Library, GitHub Actions, Docker |
 
 ## Results
 
-Run `python evaluate.py --backend both` after training, then paste `reports/comparison_test.md` here.
+All figures are measured on a held-out test split of 252 images that was not used for training or model
+selection. Intervals are bootstrap 95% confidence intervals.
 
-| Model | Accuracy | Precision | Recall | Specificity | F1 | ROC-AUC |
-|---|---|---|---|---|---|---|
-| Custom CNN (TensorFlow/Keras) | | | | | | |
-| ResNet18 transfer learning (PyTorch) | | | | | | |
+| Model | Accuracy | ROC-AUC |
+|---|---|---|
+| Metadata-only decision tree (no image content) | 0.956 (0.933-0.980) | 0.983 (0.967-0.996) |
+| Custom CNN (TensorFlow/Keras) | 0.960 (0.937-0.980) | 0.995 (0.988-0.999) |
+| ResNet18, transfer learning (PyTorch) | 1.000 (1.000-1.000) | 1.000 (1.000-1.000) |
 
-Serve whichever model wins on the test split (`MODEL_BACKEND=tf` or `torch`).
+| Model | Precision | Recall | Specificity | F1 |
+|---|---|---|---|---|
+| Custom CNN (TensorFlow/Keras) | 0.928 | 0.981 | 0.946 | 0.954 |
+| ResNet18, transfer learning (PyTorch) | 1.000 | 1.000 | 1.000 | 1.000 |
 
-## Quick start
+**Interpretation.** These results should not be read as evidence of clinical performance. In the source data,
+every positive image is 720 pixels on its longest side, compared with 2% of negative images, and the typical
+negative image is roughly 305 x 310 pixels. The two classes were therefore collected from different sources,
+and a model can achieve a high score by recognising the source rather than the condition. The custom CNN is
+statistically indistinguishable from the baseline that uses file properties alone, and the perfect ResNet18
+score on 252 images is consistent with the same effect. Generalisation to photographs from other sources has
+not been established (see [Limitations](#limitations)).
+
+## System overview
+
+```
+dataset/ ──prepare_dataset.py──> data/{train,val,test}/  ──train_tf.py────> models/psoriasis_cnn.keras
+ (raw)     filter, dedupe, group,   (stratified, checked        train_torch.py─> models/psoriasis_resnet18.pt
+           split                     for leakage)                      │
+                                                  evaluate.py ◄────────┘   held-out metrics and plots
+                                                  shortcut_baseline.py     metadata-only comparison
+                                                            │
+React app ──POST /predict──> Flask API ──> predictor (TensorFlow or PyTorch) ──> label, probability, heatmap
+```
+
+| Component | Script | Description |
+|---|---|---|
+| Data preparation | `prepare_dataset.py` | Removes unreadable and undersized images and exact duplicates; groups near-duplicate photographs using a 256-bit perceptual hash; optionally keeps numbered sibling files together; splits whole groups 70/15/15, stratified by class. Aborts if any duplicate or group appears in more than one split. Writes `data/manifest.csv` and `reports/dataset_summary.json`. |
+| Training (TensorFlow) | `train_tf.py` | Compact CNN with three convolutional blocks and global average pooling; augmentation inside the model; early stopping on validation loss. |
+| Training (PyTorch) | `train_torch.py` | ImageNet-pretrained ResNet18; the new classification head is trained first, then the full network is fine-tuned with early stopping. |
+| Evaluation | `evaluate.py` | Accuracy, precision, recall, specificity, F1 and ROC-AUC with confidence intervals, plus confusion matrix, ROC curve and per-image predictions. Supports an external image folder through `--data-dir`. |
+| Confound check | `shortcut_baseline.py` | Trains a decision tree on file properties only (width, height, size, type) and scores it on the same test split. |
+| Serving | `app.py`, `psoriscan/` | REST API returning the label, psoriasis probability, confidence and a transparent heatmap. Images are processed in memory and never written to disk. |
+
+Training, evaluation and serving share a single preprocessing module (`psoriscan/imaging.py`) and one predictor
+class per framework (`psoriscan/predictors.py`), so the reported metrics describe exactly what the API serves.
+
+
+## Getting started
+
+Requires Python 3.10 or newer and Node.js 20 or newer.
 
 ```bash
-# 1. Install (pick the framework(s) you need)
+# 1. Install (choose the framework or frameworks required)
 pip install -r requirements.txt -r requirements-train.txt
 pip install -r requirements-torch.txt        # and/or: pip install -r requirements-tf.txt
 
-# 2. Data: put the raw images in dataset/<anything>/{no_psoriasis,psoriasis}/ then
-python prepare_dataset.py
+# 2. Prepare the data: place raw images in dataset/<any>/{no_psoriasis,psoriasis}/, then
+python prepare_dataset.py --positive-keyword psoria --group-regex "^(\d+)[.,]\d+$"
 
-# 3. Train and evaluate
+# 3. Train, then evaluate once at the end
 python train_torch.py
 python train_tf.py
 python evaluate.py --backend both
+python shortcut_baseline.py
 
-# 4. Run the API (serves MODEL_BACKEND, default torch), then the frontend
+# 4. Start the API (serves MODEL_BACKEND, default torch) and the frontend
 python app.py                                # http://localhost:5000
 cd frontend && cp .env.example .env && npm install && npm start    # http://localhost:3000
 ```
 
-Use `python train_torch.py --no-pretrained` to train offline (random weights, lower accuracy).
+Notes:
+- In PowerShell, select the backend with `$env:MODEL_BACKEND="tf"`; in bash use `export MODEL_BACKEND=tf`.
+- In bash, wrap the regular expression in single quotes: `--group-regex '^(\d+)[.,]\d+$'`.
+- Both models train on a laptop CPU; the TensorFlow model needs roughly 75 seconds per epoch.
+- `python train_torch.py --no-pretrained` trains without downloading ImageNet weights (lower accuracy).
+- To evaluate external photographs, place them in `external/test/{psoriasis,no_psoriasis}/` and run
+  `python evaluate.py --backend both --data-dir external --tag external`.
 
-### API
+## API reference
 
 | Endpoint | Description |
 |---|---|
-| `GET /health` | `{"status": "ok", "backend": ..., "model": ...}` |
-| `POST /predict` | Multipart field `image` (JPEG, PNG, WEBP or BMP, up to 8 MB). Returns `label`, `is_psoriasis`, `probability_psoriasis`, `confidence`, `threshold`, `heatmap` (PNG data URL), `model`, `disclaimer`. Errors are JSON: `{"error": {"code", "message"}}` with status 400, 413 or 415. |
+| `GET /health` | Returns `{"status": "ok", "backend": ..., "model": ...}`. |
+| `POST /predict` | Multipart field `image` (JPEG, PNG, WEBP or BMP, up to 8 MB). Returns `label`, `is_psoriasis`, `probability_psoriasis`, `confidence`, `threshold`, `heatmap` (PNG data URL), `model` and `disclaimer`. Errors are returned as JSON, `{"error": {"code", "message"}}`, with status 400, 413 or 415. |
 
-### Configuration (environment variables)
+### Configuration
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `MODEL_BACKEND` | `torch` | `torch` or `tf` |
-| `MODEL_DIR` | `./models` | Where model files live |
-| `MODEL_URL` | _(empty)_ | https link to the model file; downloaded on start if missing |
-| `MODEL_SHA256` | _(empty)_ | Optional checksum of the download |
-| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed frontend origins |
+| `MODEL_DIR` | `./models` | Location of model files |
+| `MODEL_URL` | _(empty)_ | HTTPS link to the model file, downloaded on start if absent |
+| `MODEL_SHA256` | _(empty)_ | Optional checksum for the download |
+| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated list of allowed frontend origins |
 | `DECISION_THRESHOLD` | `0.5` | Probability above which the label is "Psoriasis" |
 | `MAX_UPLOAD_MB` | `8` | Upload size limit |
-| `PORT`, `HOST`, `FLASK_DEBUG` | `5000`, `127.0.0.1`, off | Local dev server only |
+| `PORT`, `HOST`, `FLASK_DEBUG` | `5000`, `127.0.0.1`, off | Local development server only |
 
-## Deployment
-
-1. **Host the model file** (not committed to git): create a GitHub Release or a Hugging Face Hub repo and upload
-   `models/psoriasis_resnet18.pt`. Copy its direct https download link.
-2. **API** (Render, Fly.io, Cloud Run or Hugging Face Spaces with the Docker SDK): deploy the `Dockerfile`.
-   Set `MODEL_URL` to the link above, `CORS_ORIGINS` to your frontend URL, and `PORT` if the platform requires
-   one. For the TensorFlow model build with `--build-arg BACKEND=tf` and `MODEL_BACKEND=tf`.
-   Free tiers sleep when idle, so the first request after a pause can take a minute.
-3. **Frontend** (Vercel or Netlify): root directory `frontend`, build command `npm run build`, output `build`,
-   environment variable `REACT_APP_API_URL=https://<your-api-host>`.
-4. Put both links at the top of this README and on your resume.
-
-```bash
-docker build -t psoriscan-api .
-docker run -p 5000:5000 -e MODEL_URL=https://.../psoriasis_resnet18.pt -e CORS_ORIGINS=http://localhost:3000 psoriscan-api
-```
-
-## Tests
+## Testing and continuous integration
 
 ```bash
 pip install -r requirements-dev.txt
-pytest -m "not slow"        # API, preprocessing, metrics, data-split tests (no ML framework needed)
-pytest -m slow              # tiny end-to-end train/evaluate/serve runs for each installed framework
-cd frontend && npm test -- --watchAll=false
+pytest -m "not slow"        # 26 tests: API, preprocessing, metrics and data-split logic (no ML framework needed)
+pytest -m slow              # 2 tests: tiny end-to-end train, evaluate and serve runs per installed framework
+cd frontend && npm test -- --watchAll=false    # 5 interface tests
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs all of the above on every push.
+GitHub Actions (`.github/workflows/ci.yml`) runs the backend tests, the end-to-end smoke tests for both
+frameworks, and the frontend tests and production build on every push.
 
-## Limitations
 
-- The training photos come from one source, so the models may not generalize to other cameras, lighting or
-  skin tones. Check the test set composition before trusting any number.
-- The task is binary (psoriasis vs not). Look-alike conditions such as eczema or fungal infections are not
-  modeled separately.
-- Grad-CAM shows which regions influenced the model's score, which is not the same as the location of disease.
-- Metrics come from a single random, group-aware split. Treat small differences between models as noise (see
-  the confidence intervals).
-
-## Project layout
+## Repository structure
 
 ```
 app.py                 API entry point (python app.py | gunicorn 'app:create_app()')
-psoriscan/             config, imaging, data access, models, predictors, API, reporting
-prepare_dataset.py     dedupe + leakage-free split          train_tf.py / train_torch.py   training
-evaluate.py            held-out evaluation and plots         tests/                         pytest suite
-frontend/              React app                             Dockerfile, .github/workflows  deploy and CI
+psoriscan/             configuration, imaging, data access, models, predictors, API, reporting
+prepare_dataset.py     filtering, de-duplication, grouping and splitting
+train_tf.py            TensorFlow/Keras CNN training
+train_torch.py         PyTorch ResNet18 training
+evaluate.py            held-out evaluation, metrics and plots
+shortcut_baseline.py   metadata-only baseline
+frontend/              React application
+tests/                 pytest suite
+reports/               metrics, plots and dataset summary
+Dockerfile, .github/   container image and CI workflow
 ```
+
